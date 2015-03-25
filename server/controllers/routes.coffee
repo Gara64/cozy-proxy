@@ -43,6 +43,7 @@ module.exports =
     'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
 
     'cozy/*': all: devices.replication
+    #'cozy/*': all: devices.external #access couchdb directly
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount
