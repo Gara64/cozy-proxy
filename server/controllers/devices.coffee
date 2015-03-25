@@ -71,16 +71,3 @@ module.exports.replication = (req, res, next) ->
             error = new Error "Request unauthorized"
             error.status = 401
             next error
-
-module.exports.external = (req, res, next) ->
-
-    # Add his credentials for CouchDB
-    if process.env.NODE_ENV is "production"
-        req.headers['authorization'] = getCredentialsHeader()
-    else
-        # Do not forward 'authorization' header in other environments
-        # in order to avoid wrong authentications in CouchDB
-        req.headers['authorization'] = null
-
-    # Forward the request to couchdb
-    getProxy().web req, res, target: "http://localhost:5984"
