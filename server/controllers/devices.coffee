@@ -74,14 +74,13 @@ module.exports.replication = (req, res, next) ->
 
 module.exports.external = (req, res, next) ->
 
-    if auth
-        # Add his creadentials for CouchDB
-        if process.env.NODE_ENV is "production"
-            req.headers['authorization'] = getCredentialsHeader()
-        else
-            # Do not forward 'authorization' header in other environments
-            # in order to avoid wrong authentications in CouchDB
-            req.headers['authorization'] = null
+    # Add his creadentials for CouchDB
+    if process.env.NODE_ENV is "production"
+        req.headers['authorization'] = getCredentialsHeader()
+    else
+        # Do not forward 'authorization' header in other environments
+        # in order to avoid wrong authentications in CouchDB
+        req.headers['authorization'] = null
 
-        # Forward the request to couchdb
-        getProxy().web req, res, target: "http://localhost:5984"
+    # Forward the request to couchdb
+    getProxy().web req, res, target: "http://localhost:5984"
