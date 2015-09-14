@@ -16,7 +16,7 @@ module.exports.request = (req, res, next) ->
     ###
 
     homePort = process.env.DEFAULT_REDIRECT_PORT
-    target = "http://localhost:#{homePort}/sharing/request"
+    target = "http://localhost:#{homePort}"
     getProxy().web req, res, target: target
 
 module.exports.answer = (req, res, next) ->
