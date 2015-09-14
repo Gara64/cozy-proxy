@@ -18,7 +18,7 @@ module.exports.request = function(req, res, next) {
   the receiver should generate a password for this sharing
    */
   homePort = process.env.DEFAULT_REDIRECT_PORT;
-  target = "http://localhost:" + homePort + "/sharing/request";
+  target = "http://localhost:" + homePort;
   return getProxy().web(req, res, {
     target: target
   });
