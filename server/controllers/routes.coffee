@@ -4,6 +4,7 @@ devices = require './devices'
 disk = require './disk'
 apps = require './applications'
 experiment = require './experimental'
+sharing = require './sharing'
 
 utils = require '../middlewares/authentication'
 
@@ -50,6 +51,9 @@ module.exports =
     'versions': get: devices.getVersions
     # Temporary - 01/05/14
     'cozy/*': all: devices.oldReplication
+
+    'sharing/request': all: sharing.request
+    'sharing/answer': all: sharing.answer
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount
