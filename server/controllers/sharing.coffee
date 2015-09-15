@@ -2,8 +2,6 @@
 
 
 module.exports.request = (req, res, next) ->
-    console.log 'request for a new sharing'
-    console.log 'req : ' + req.baseUrl
 
     ###TODO: the incoming request should be in this form :
     (see owncloud)

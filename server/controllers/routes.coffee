@@ -52,7 +52,7 @@ module.exports =
     # Temporary - 01/05/14
     'cozy/*': all: devices.oldReplication
 
-    'sharing/request': all: sharing.request
+    'sharing/request/:sourceURL': all: sharing.request
     'sharing/answer': all: sharing.answer
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
