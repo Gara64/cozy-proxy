@@ -19,4 +19,6 @@ module.exports.request = (req, res, next) ->
 
 module.exports.answer = (req, res, next) ->
     console.log 'answer for a new sharing'
+    console.log 'the answer is ' + req.params.answer if req.params?.answer
+    res.send success: true, msg: 'answer received'
     #should be yes/no with the sharing id and a sharing password if yes
