@@ -85,10 +85,10 @@ module.exports = {
     all: devices.oldReplication
   },
   'sharing/request': {
-    all: sharing.request
+    post: sharing.request
   },
   'sharing/answer': {
-    all: sharing.answer
+    post: sharing.answer
   },
   '.well-known/host-meta.?:ext': {
     get: experiment.webfingerHostMeta
