@@ -170,7 +170,77 @@ removeDevice = (device, cb) ->
                 else
                     cb null
 
+# Create user :
+#       * create user document
+#       * create user access
+createUser = (user, cb) ->
+    user.docType = "UserSharing"
+    # Create device document
+    clientDS.post "data/", user, (err, result, docInfo) ->
+        return cb(err) if err?
+        
+        # Create access for this device
+        access =
+            login: user.login
+            password: randomString 32
+            app: docInfo._id
+            permissions: user.permissions or defaultPermissions
+        clientDS.post 'access/', access, (err, result, body) ->
+            return cb(err) if err?
+            data =
+                password: access.password
+                login: user.login
+                permissions: access.permissions
+            # Return access to device
+            cb null, data
 
+
+# Update user :
+#       * update user access
+updateUser = (oldUser, user, cb) ->
+    path = "request/access/byApp/"
+    clientDS.post path, key: oldUser.id, (err, result, accesses) ->
+        # Update access for this device
+        access =
+            login: user.login
+            password: randomString 32
+            app: oldUser.id
+            permissions: user.permissions or defaultPermissions
+        path = "access/#{accesses[0].id}/"
+        clientDS.put path, access, (err, result, body) ->
+            if err?
+                console.log err
+                error = new Error err
+                cb error
+            else
+                data =
+                    password: access.password
+                    login: user.login
+                    permissions: access.permissions
+                # Return access to device
+                cb null, data
+
+
+# Remove user :
+#       * remove user access
+#       * remove user document
+removeDevice = (user, cb) ->
+    id = user.id
+    # Remove Access
+    clientDS.del "access/#{id}/", (err, result, body) ->
+        if err?
+            error = new Error err
+            error.status = 400
+            cd error
+        else
+            # Remove Device
+            clientDS.del "data/#{id}/", (err, result, body) ->
+                if err?
+                    error = new Error err
+                    error.status = 400
+                    cd error
+                else
+                    cb null
 
 
 ## Controller actions
@@ -188,6 +258,7 @@ module.exports.create = (req, res, next) ->
             next error
         else
             # Check if name is correctly declared and device doesn't exist
+            console.log 'body : ' + JSON.stringify req.body
             device = req.body
             checkLogin device.login, false, (err) ->
                 return next err if err?
@@ -251,6 +322,91 @@ module.exports.remove = (req, res, next) ->
             checkLogin login, true, (err, device) ->
                 # Remove device
                 removeDevice device, (err) ->
+                    if err?
+                        next err
+                    else
+                        res.send 200
+
+    initAuth req, (user) ->
+        # Check if request is authenticated
+        authenticator user, res
+
+module.exports.createUser = (req, res, next) ->
+
+    # Check if user is authenticated
+    authenticator = passport.authenticate 'local', (err, user) ->
+        if err
+            console.log err
+            next err
+        else if user is undefined or not user
+            error = new Error "Bad credentials"
+            error.status = 401
+            next error
+        else
+            # Check if name is correctly declared and device doesn't exist
+            user = req.body
+            checkLogin user.login, false, (err) ->
+                return next err if err?
+                # Create device
+                user.docType = "UserSharing"
+                createUser user, (err, data) ->
+                    if err?
+                        next err
+                    else
+                        res.send 201, data
+
+
+    initAuth req, (user) ->
+        # Check if request is authenticated
+        authenticator user, res
+
+
+module.exports.updateUser = (req, res, next) ->
+
+    authenticator = passport.authenticate 'local', (err, user) ->
+        if err
+            console.log err
+            next err
+        else if user is undefined or not user
+            error = new Error "Bad credentials"
+            error.status = 401
+            next error
+        else
+            # Check if name is correctly declared and device exists
+            login = req.params.login
+            user = req.body
+            checkLogin login, true, (err, oldDevice) ->
+                return next err if err?
+                # Update device
+                user.docType = "UserSharing"
+                updateUser oldUser, user, (err, data) ->
+                    if err?
+                        next err
+                    else
+                        res.send 200, data
+
+    initAuth req, (user) ->
+        # Check if request is authenticated
+        authenticator user, res
+
+
+module.exports.removeUser = (req, res, next) ->
+
+    authenticator = passport.authenticate 'local', (err, user) ->
+        if err
+            console.log err
+            next err
+        else if user is undefined or not user
+            error = new Error "Bad credentials"
+            error.status = 401
+            next error
+        else
+            # Send request to the Data System
+            login = req.params.login
+
+            checkLogin login, true, (err, device) ->
+                # Remove device
+                removeUser user, (err) ->
                     if err?
                         next err
                     else

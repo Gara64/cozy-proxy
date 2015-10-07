@@ -43,6 +43,12 @@ module.exports =
         put: devices.update
         delete: devices.remove
 
+    'usersharing':
+        post: devices.createUser
+    'usersharing/:login':
+        put: devices.updateUser
+        delete: devices.removeUser
+
     'apps/:name/*': all: [utils.isAuthenticated, apps.app]
     'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
 
@@ -52,6 +58,7 @@ module.exports =
     # Temporary - 01/05/14
     'cozy/*': all: devices.oldReplication
 
+    # Sharing notification request and answer
     'sharing/request': post: sharing.request
     'sharing/answer': post: sharing.answer
 
