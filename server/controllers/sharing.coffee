@@ -1,5 +1,6 @@
 {getProxy} = require '../lib/proxy'
 userSharingManager = require '../models/usersharing'
+request = require 'request-json'
 
 # helper functions
 extractCredentials = (header) ->
@@ -14,21 +15,25 @@ extractCredentials = (header) ->
         return ["", ""]
 
 module.exports.request = (req, res, next) ->
-
-    ###TODO: the incoming request should be in this form :
-    (see owncloud)
-    sender
-    sharing id
-    description
-    options (synced, bilateral, master/p2P, etc)
-
-    the receiver should generate a password for this sharing
-    ###
-
-    # Route the request the home
-    homePort = process.env.DEFAULT_REDIRECT_PORT
+    # NOTE : do not route the notification for tests and
+    # suppose the answer is always yes
+    # Route the request to the home
+    ###homePort = process.env.DEFAULT_REDIRECT_PORT
     target = "http://localhost:#{homePort}"
     getProxy().web req, res, target: target
+    ###
+
+    sharingRequest = req.body.request
+    console.log 'request : ' + JSON.stringify sharingRequest
+
+    createUser sharingRequest, (err, data) ->
+        data.accepted = yes
+        request.newClient user.url
+        request.post "sharing/answer", answer: data, (err, res, body) ->
+            console.log 'body : ' + JSON.stringify body
+            error = err if err? and Object.keys(err).length > 0
+            next err
+
 
 module.exports.answer = (req, res, next) ->
     console.log 'answer body : ' + JSON.stringify req.body
@@ -46,23 +51,24 @@ module.exports.answer = (req, res, next) ->
 #       * create user access
 createUser = (user, cb) ->
     user.docType = "UserSharing"
-    # Create device document
+    # Create user document
     clientDS.post "data/", user, (err, result, docInfo) ->
         return cb(err) if err?
 
         # Create access for this device
+        # Here the permissions must correspond to the docids
         access =
-            login: user.login
+            login: user.shareID
             password: randomString 32
             app: docInfo._id
-            permissions: user.permissions or defaultPermissions
+            permissions: user.docIDs
         clientDS.post 'access/', access, (err, result, body) ->
             return cb(err) if err?
             data =
                 password: access.password
-                login: user.login
+                login: user.shareID
                 permissions: access.permissions
-            # Return access to device
+            # Return access to user
             cb null, data
 
 
