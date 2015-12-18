@@ -44,10 +44,10 @@ module.exports =
         delete: devices.remove
 
     'usersharing':
-        post: devices.createUser
+        post: sharing.createUser
     'usersharing/:login':
-        put: devices.updateUser
-        delete: devices.removeUser
+        put: sharing.updateUser
+        delete: sharing.removeUser
 
     'apps/:name/*': all: [utils.isAuthenticated, apps.app]
     'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
@@ -61,6 +61,7 @@ module.exports =
     # Sharing notification request and answer
     'sharing/request': post: sharing.request
     'sharing/answer': post: sharing.answer
+    'sharing/replication/*': all: sharing.replication
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount
