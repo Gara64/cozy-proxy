@@ -1,6 +1,24 @@
+Client = require('request-json').JsonClient
 {getProxy} = require '../lib/proxy'
 userSharingManager = require '../models/usersharing'
 request = require 'request-json'
+
+couchdbHost = process.env.COUCH_HOST or 'localhost'
+couchdbPort = process.env.COUCH_PORT or '5984'
+
+dsHost = 'localhost'
+dsPort = '9101'
+clientDS = new Client "http://#{dsHost}:#{dsPort}/"
+
+if process.env.NODE_ENV is "production" or process.env.NODE_ENV is "test"
+    clientDS.setBasicAuth process.env.NAME, process.env.TOKEN
+
+# Define random function for application's token
+randomString = (length) ->
+    string = ""
+    while (string.length < length)
+        string = string + Math.random().toString(36).substr(2)
+    return string.substr 0, length
 
 # helper functions
 extractCredentials = (header) ->
@@ -14,29 +32,33 @@ extractCredentials = (header) ->
     else
         return ["", ""]
 
+# Incoming sharing request
 module.exports.request = (req, res, next) ->
-    # NOTE : do not route the notification for tests and
-    # suppose the answer is always yes
-    # Route the request to the home
-    ###homePort = process.env.DEFAULT_REDIRECT_PORT
-    target = "http://localhost:#{homePort}"
-    getProxy().web req, res, target: target
-    ###
 
-    sharingRequest = req.body.request
-    console.log 'request : ' + JSON.stringify sharingRequest
+    if not req.body?.request?
+        err = new Error "Bad request"
+        err.status = 400
+        next err
+    else
+        sharingRequest = req.body.request
+        console.log 'request : ' + JSON.stringify sharingRequest
 
-    createUser sharingRequest, (err, data) ->
-        data.accepted = yes
-        request.newClient user.url
-        request.post "sharing/answer", answer: data, (err, res, body) ->
-            console.log 'body : ' + JSON.stringify body
-            error = err if err? and Object.keys(err).length > 0
-            next err
 
+        # Create a UserSharing doc and send it to the home
+        createUserSharing sharingRequest, (err, doc) ->
+            return next err if err?
+
+            req.request = doc
+
+            homePort = process.env.DEFAULT_REDIRECT_PORT
+            target = "http://localhost:#{homePort}"
+            getProxy().web req, res, target: target
+ 
+   
 
 module.exports.answer = (req, res, next) ->
     console.log 'answer body : ' + JSON.stringify req.body
+    console.log 'url : ' + req.url
     #should be yes/no with the sharing id and a sharing password if yes
 
     # Route the answer to the DS
@@ -49,27 +71,11 @@ module.exports.answer = (req, res, next) ->
 # Create user :
 #       * create user document
 #       * create user access
-createUser = (user, cb) ->
+createUserSharing = (user, callback) ->
     user.docType = "UserSharing"
     # Create user document
     clientDS.post "data/", user, (err, result, docInfo) ->
-        return cb(err) if err?
-
-        # Create access for this device
-        # Here the permissions must correspond to the docids
-        access =
-            login: user.shareID
-            password: randomString 32
-            app: docInfo._id
-            permissions: user.docIDs
-        clientDS.post 'access/', access, (err, result, body) ->
-            return cb(err) if err?
-            data =
-                password: access.password
-                login: user.shareID
-                permissions: access.permissions
-            # Return access to user
-            cb null, data
+        callback err, docInfo
 
 
 # Update user :
