@@ -54,8 +54,8 @@ module.exports.request = (req, res, next) ->
             homePort = process.env.DEFAULT_REDIRECT_PORT
             target = "http://localhost:#{homePort}"
             
-            clientProxy = new Client target
-            clientProxy.post req.url, id: doc._id, (err, result, body) ->
+            clientHome = new Client target
+            clientHome.post req.url, id: doc._id, (err, result, body) ->
                 if err?
                     next err
                 else if not result?.statusCode?
@@ -67,8 +67,8 @@ module.exports.request = (req, res, next) ->
         
 
 module.exports.answer = (req, res, next) ->
-    console.log 'answer body : ' + JSON.stringify req.body
-    console.log 'url : ' + req.url
+    console.log 'answer : ' + JSON.stringify req.body
+
     #should be yes/no with the sharing id and a sharing password if yes
 
     # Route the answer to the DS
