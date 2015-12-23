@@ -1,7 +1,10 @@
 Client = require('request-json').JsonClient
-{getProxy} = require '../lib/proxy'
+
 userSharingManager = require '../models/usersharing'
 request = require 'request-json'
+
+{getProxy} = require '../lib/proxy'
+
 
 couchdbHost = process.env.COUCH_HOST or 'localhost'
 couchdbPort = process.env.COUCH_PORT or '5984'
@@ -48,13 +51,20 @@ module.exports.request = (req, res, next) ->
         createUserSharing sharingRequest, (err, doc) ->
             return next err if err?
 
-            req.request = doc
-
             homePort = process.env.DEFAULT_REDIRECT_PORT
             target = "http://localhost:#{homePort}"
-            getProxy().web req, res, target: target
- 
-   
+            
+            clientProxy = new Client target
+            clientProxy.post req.url, id: doc._id, (err, result, body) ->
+                if err?
+                    next err
+                else if not result?.statusCode?
+                    err = new Error "Bad request"
+                    err.status = 400
+                    callback err
+                else
+                    res.send result.statusCode, body
+        
 
 module.exports.answer = (req, res, next) ->
     console.log 'answer body : ' + JSON.stringify req.body
