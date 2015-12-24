@@ -67,11 +67,11 @@ module.exports = {
     "delete": devices.remove
   },
   'usersharing': {
-    post: devices.createUser
+    post: sharing.createUser
   },
   'usersharing/:login': {
-    put: devices.updateUser,
-    "delete": devices.removeUser
+    put: sharing.updateUser,
+    "delete": sharing.removeUser
   },
   'apps/:name/*': {
     all: [utils.isAuthenticated, apps.app]
@@ -96,6 +96,9 @@ module.exports = {
   },
   'sharing/answer': {
     post: sharing.answer
+  },
+  'sharing/replication/*': {
+    all: sharing.replication
   },
   '.well-known/host-meta.?:ext': {
     get: experiment.webfingerHostMeta
