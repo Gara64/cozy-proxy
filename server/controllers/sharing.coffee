@@ -38,14 +38,14 @@ extractCredentials = (header) ->
 # Incoming sharing request
 module.exports.request = (req, res, next) ->
 
-    if not req.body?.request?
+    sharingRequest = req.body
+    console.log 'request : ' + JSON.stringify sharingRequest
+    
+    if not sharingRequest?
         err = new Error "Bad request"
         err.status = 400
         next err
     else
-        sharingRequest = req.body.request
-        console.log 'request : ' + JSON.stringify sharingRequest
-
 
         # Create a UserSharing doc and send it to the home
         createUserSharing sharingRequest, (err, doc) ->
