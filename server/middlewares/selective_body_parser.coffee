@@ -6,8 +6,6 @@ module.exports = (req, res, next) ->
     isNoAuthRoute = isNoAuthRoute and req.url.indexOf("/register") isnt 0
     isNoAuthRoute = isNoAuthRoute and req.url.indexOf("/device") isnt 0
     isNoAuthRoute = isNoAuthRoute and req.url.indexOf("/sharing/request") isnt 0
-    isNoAuthRoute = isNoAuthRoute and req.url.indexOf("/sharing/replication") isnt 0
-
 
     if isNoAuthRoute then next()
     else
