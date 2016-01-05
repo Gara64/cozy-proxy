@@ -46,24 +46,14 @@ extractCredentials = function(header) {
 };
 
 module.exports.request = function(req, res, next) {
-<<<<<<< HEAD
-  var err, ref, sharingRequest;
-  if (((ref = req.body) != null ? ref.request : void 0) == null) {
-=======
   var err, sharingRequest;
   sharingRequest = req.body;
   console.log('request : ' + JSON.stringify(sharingRequest));
   if (sharingRequest == null) {
->>>>>>> 36630c56d1ac4faf1b0c69ad508b28e083812525
     err = new Error("Bad request");
     err.status = 400;
     return next(err);
   } else {
-<<<<<<< HEAD
-    sharingRequest = req.body.request;
-    console.log('request : ' + JSON.stringify(sharingRequest));
-=======
->>>>>>> 36630c56d1ac4faf1b0c69ad508b28e083812525
     return createUserSharing(sharingRequest, function(err, doc) {
       var clientHome, homePort, target;
       if (err != null) {
