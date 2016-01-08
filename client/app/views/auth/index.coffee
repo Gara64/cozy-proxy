@@ -39,7 +39,7 @@ module.exports = class AuthView extends Mn.LayoutView
     - prefix: type is passed as prefix for locales translations
     ###
     serializeData: ->
-        username: window.username
+        username: require('env').username
         prefix:   @options.type
 
 
@@ -111,15 +111,11 @@ module.exports = class AuthView extends Mn.LayoutView
             @ui.passwd.focus()
         , 100
 
-        # Disable the submit button if the password field is empty
-        # Add a timeout to let the browser automatically fill it.
+        # Focus again to avoid blinks and ensure that everything is
+        # selected.
+        # Without it Firefox doesn't select the field content in every
+        # cases.
         setTimeout =>
-            @passwordEntered.not()
-                .assign @ui.submit, 'attr', 'aria-disabled'
-            # Focus again to avoid blinks and ensure that everything is
-            # selected.
-            # Without it Firefox doesn't select the field content in every
-            # cases.
             @ui.passwd.focus()
         , 300
 
@@ -143,4 +139,3 @@ module.exports = class AuthView extends Mn.LayoutView
         # Re select all password field on failure.
         @model.alert
             .assign @ui.passwd[0], 'select'
-

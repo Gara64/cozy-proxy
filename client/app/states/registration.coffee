@@ -17,18 +17,17 @@ module.exports = class Registration extends StateModel
     - nextLabel: the label for the next button flow control
     - nocontrols: hide the flow controls
     ###
-    steps:
+    steps: do ->
+        hasGoogleImport = 'import-from-google' in require('env').apps
+
         preset:
-            next:      'import'
+            next:      if hasGoogleImport then 'import' else 'setup'
             nextLabel: 'sign up'
         import:
-            next:      'email'
+            next:      'setup'
             nextLabel: 'skip'
         import_google:
             nocontrols: true
-        email:
-            next:      'setup'
-            nextLabel: 'skip'
         setup:
             next:       'welcome'
             nocontrols: true
@@ -111,10 +110,13 @@ module.exports = class Registration extends StateModel
         @setStepBus
             .filter (value) => !(value in Object.keys @steps)
             .onValue (path) ->
-                window.location.pathname = path
+                # /!\ we can't set only the pathname here, because
+                # Chrome encodes it, replacing # with %23 See #195
+                loc = window.location
+                window.location.href = "#{loc.protocol}//#{loc.host}#{path}"
 
 
-        # Add the `nextControl` property ti the state-machine
+        # Add the `nextControl` property to the state-machine
         @add 'nextControl', nextControl
 
 
@@ -171,7 +173,7 @@ module.exports = class Registration extends StateModel
 
     - data: an object containing the form input entries as key/values pairs
     ###
-    setEmailSubmit: (data) =>
+    setEmailSubmit: (data) ->
         # Map form data to the _email_ app endpoint expected form
         login = data['imap-login'] or data.email
         accountData =

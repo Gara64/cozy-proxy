@@ -104,15 +104,16 @@ initAuth = (req, cb) ->
 #       * create device access
 createDevice = (device, cb) ->
     device.docType = "Device"
+    access =
+        login: device.login
+        password: randomString 32
+        permissions: device.permissions or defaultPermissions
     # Create device document
+    delete device.permissions
     clientDS.post "data/", device, (err, result, docInfo) ->
         return cb(err) if err?
         # Create access for this device
-        access =
-            login: device.login
-            password: randomString 32
-            app: docInfo._id
-            permissions: device.permissions or defaultPermissions
+        access.app = docInfo._id
         clientDS.post 'access/', access, (err, result, body) ->
             return cb(err) if err?
             data =
@@ -134,19 +135,22 @@ updateDevice = (oldDevice, device, cb) ->
             password: randomString 32
             app: oldDevice.id
             permissions: device.permissions or defaultPermissions
-        path = "access/#{accesses[0].id}/"
+        path = "access/#{access.app}/"
         clientDS.put path, access, (err, result, body) ->
             if err?
                 console.log err
                 error = new Error err
                 cb error
             else
-                data =
-                    password: access.password
-                    login: device.login
-                    permissions: access.permissions
-                # Return access to device
-                cb null, data
+                oldDevice.login = device.login
+                delete oldDevice.permissions
+                clientDS.put "data/#{oldDevice.id}", oldDevice, (err, result, body) ->
+                    data =
+                        password: access.password
+                        login: device.login
+                        permissions: access.permissions
+                    # Return access to device
+                    cb null, data
 
 
 # Remove device :
@@ -320,12 +324,13 @@ module.exports.remove = (req, res, next) ->
             login = req.params.login
 
             checkLogin login, true, (err, device) ->
+                return next err if err?
                 # Remove device
                 removeDevice device, (err) ->
                     if err?
                         next err
                     else
-                        res.send 200
+                        res.send 204
 
     initAuth req, (user) ->
         # Check if request is authenticated

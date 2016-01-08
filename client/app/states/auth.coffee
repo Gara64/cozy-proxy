@@ -33,7 +33,10 @@ module.exports = class Auth extends StateModel
         @success.map @get 'next'
             .onValue (next) ->
                 setTimeout ->
-                    window.location.pathname = next
+                    # /!\ we can't set only the pathname here, because
+                    # Chrome encodes it, replacing # with %23 See #195
+                    loc = window.location
+                    window.location.href = "#{loc.protocol}//#{loc.host}#{next}"
                 , 500
 
 
@@ -78,3 +81,8 @@ module.exports = class Auth extends StateModel
             status:  'success'
             title:   'recover sent title'
             message: 'recover sent message'
+
+        @alert.plug reset.errors().mapError
+            status:  'error'
+            title:   'recover error title'
+            message: 'recover error message'
