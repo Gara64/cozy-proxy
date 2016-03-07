@@ -38,22 +38,23 @@ extractCredentials = (header) ->
 # Incoming sharing request
 module.exports.request = (req, res, next) ->
 
-    sharingRequest = req.body
-    console.log 'request : ' + JSON.stringify sharingRequest
-    
-    if not sharingRequest?
+    request = req.body
+    console.log 'request : ' + JSON.stringify request
+
+    # Check mandatory fields
+    unless request.shareID? and request.desc? and request.hostUrl?
         err = new Error "Bad request"
         err.status = 400
         next err
     else
-
         # Create a UserSharing doc and send it to the home
-        createUserSharing sharingRequest, (err, doc) ->
+        createUserSharing request, (err, doc) ->
             return next err if err?
 
             homePort = process.env.DEFAULT_REDIRECT_PORT
             target = "http://localhost:#{homePort}"
             
+            console.log 'lets ask the home'
             clientHome = new Client target
             clientHome.post req.url, id: doc._id, (err, result, body) ->
                 if err?
