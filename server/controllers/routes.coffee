@@ -59,9 +59,9 @@ module.exports =
     'cozy/*': all: devices.oldReplication
 
     # Sharing notification request and answer
-    'sharing/request': post: sharing.request
-    'sharing/answer': post: sharing.answer
-    'sharing/replication/*': all: sharing.replication
+    'services/sharing/request': post: sharing.request
+    'services/sharing/answer': post: sharing.answer
+    'services/sharing/replication/*': all: sharing.replication
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount

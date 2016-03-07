@@ -205,7 +205,7 @@ module.exports.replication = (req, res, next) ->
     userSharingManager.isAuthenticated username, password, (auth) ->
         if auth
             # Forward request for DS.
-            req.url = req.url.replace 'sharing/', ''
+            req.url = req.url.replace 'services/sharing/', ''
             getProxy().web req, res, target: "http://#{dsHost}:#{dsPort}"
         else
             error = new Error "Request unauthorized"
