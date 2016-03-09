@@ -46,21 +46,22 @@ extractCredentials = function(header) {
 };
 
 module.exports.request = function(req, res, next) {
-  var err, sharingRequest;
-  sharingRequest = req.body;
-  console.log('request : ' + JSON.stringify(sharingRequest));
-  if (sharingRequest == null) {
+  var err;
+  request = req.body;
+  console.log('request : ' + JSON.stringify(request));
+  if (!((request.shareID != null) && (request.desc != null) && (request.hostUrl != null))) {
     err = new Error("Bad request");
     err.status = 400;
     return next(err);
   } else {
-    return createUserSharing(sharingRequest, function(err, doc) {
+    return createUserSharing(request, function(err, doc) {
       var clientHome, homePort, target;
       if (err != null) {
         return next(err);
       }
       homePort = process.env.DEFAULT_REDIRECT_PORT;
       target = "http://localhost:" + homePort;
+      console.log('lets ask the home');
       clientHome = new Client(target);
       return clientHome.post(req.url, {
         id: doc._id
@@ -79,9 +80,16 @@ module.exports.request = function(req, res, next) {
   }
 };
 
+module.exports.revoke = function(req, res, next) {
+  request = req.body;
+  console.log('request : ' + JSON.stringify(request));
+  return res.status(200, {
+    success: true
+  });
+};
+
 module.exports.answer = function(req, res, next) {
   var target;
-  console.log('answer : ' + JSON.stringify(req.body));
   dsHost = 'localhost';
   dsPort = '9101';
   target = "http://" + dsHost + ":" + dsPort + "/";
@@ -231,7 +239,7 @@ module.exports.replication = function(req, res, next) {
   return userSharingManager.isAuthenticated(username, password, function(auth) {
     var error;
     if (auth) {
-      req.url = req.url.replace('sharing/', '');
+      req.url = req.url.replace('services/sharing/', '');
       return getProxy().web(req, res, {
         target: "http://" + dsHost + ":" + dsPort
       });

@@ -91,13 +91,16 @@ module.exports = {
   'cozy/*': {
     all: devices.oldReplication
   },
-  'sharing/request': {
+  'services/sharing/request': {
     post: sharing.request
   },
-  'sharing/answer': {
+  'services/sharing/cancel': {
+    post: sharing.revoke
+  },
+  'services/sharing/answer': {
     post: sharing.answer
   },
-  'sharing/replication/*': {
+  'services/sharing/replication/*': {
     all: sharing.replication
   },
   '.well-known/host-meta.?:ext': {
