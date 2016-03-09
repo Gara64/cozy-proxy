@@ -59,7 +59,9 @@ module.exports =
     'cozy/*': all: devices.oldReplication
 
     # Sharing notification request and answer
-    'services/sharing/request': post: sharing.request
+    'services/sharing/request': 
+        post: sharing.request
+        delete: sharing.revoke
     'services/sharing/answer': post: sharing.answer
     'services/sharing/replication/*': all: sharing.replication
 

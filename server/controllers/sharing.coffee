@@ -67,8 +67,17 @@ module.exports.request = (req, res, next) ->
                     res.send result.statusCode, body
         
 
+# Incoming sharing revokation
+module.exports.revoke = (req, res, next) ->
+    request = req.body
+    console.log 'request : ' + JSON.stringify request
+
+    #TODO : check token
+    #TODO : revoke a sharing access
+    res.status 200, success: true
+
 module.exports.answer = (req, res, next) ->
-    console.log 'answer : ' + JSON.stringify req.body
+    #console.log 'answer : ' + JSON.stringify req.body
 
     #should be yes/no with the sharing id and a sharing password if yes
 
@@ -77,7 +86,7 @@ module.exports.answer = (req, res, next) ->
     dsPort = '9101'
     target = "http://#{dsHost}:#{dsPort}/"
     getProxy().web req, res, target: target
-
+    
 
 # Create user :
 #       * create user document
