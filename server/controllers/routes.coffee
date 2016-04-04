@@ -4,6 +4,7 @@ devices = require './devices'
 disk = require './disk'
 apps = require './applications'
 experiment = require './experimental'
+sharing = require './sharing'
 
 utils = require '../middlewares/authentication'
 
@@ -42,6 +43,12 @@ module.exports =
         put: devices.update
         delete: devices.remove
 
+    'usersharing':
+        post: sharing.createUser
+    'usersharing/:login':
+        put: sharing.updateUser
+        delete: sharing.removeUser
+
     'apps/:name/*': all: [utils.isAuthenticated, apps.app]
     'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
 
@@ -50,6 +57,11 @@ module.exports =
     'versions': get: devices.getVersions
     # Temporary - 01/05/14
     'cozy/*': all: devices.oldReplication
+
+    # Sharing notification request and answer
+    'services/sharing/request': post: sharing.request
+    'services/sharing/answer': post: sharing.answer
+    'services/sharing/replication/*': all: sharing.replication
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount
