@@ -143,6 +143,7 @@ buildJsInLocales = ->
         name     = file.replace '.json', '.js'
         fs.writeFileSync "./build/client/app/locales/#{name}", exported
         # add locales at the end of app.js
+    exec "rm -rf build/client/app/locales/*.json"
 
 task 'build', 'Build CoffeeScript to Javascript', ->
     logger.options.prefix = 'cake:build'
@@ -154,12 +155,11 @@ task 'build', 'Build CoffeeScript to Javascript', ->
                 ./node_modules/.bin/jade -cPDH -o build/server/views server/views &&
                 cd client &&
                 ./node_modules/.bin/bower install &&
-                brunch build --production &&
-                cd .. &&
+                brunch build --production && 
                 mkdir -p build/client/app/locales/ &&
                 rm -rf build/client/app/locales/* &&
                 cp -R client/public build/client/ &&
-                rm -rf client/app/locales/*.coffee
+                rm -rf client/app/locales/*.coffee"
               """
     exec command, (err, stdout, stderr) ->
         if err
