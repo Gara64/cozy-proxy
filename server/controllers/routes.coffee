@@ -5,6 +5,7 @@ disk = require './disk'
 apps = require './applications'
 experiment = require './experimental'
 sharing = require './sharing'
+replication = require '../lib/replication'
 
 utils = require '../middlewares/authentication'
 
@@ -43,12 +44,6 @@ module.exports =
         put: devices.update
         delete: devices.remove
 
-    'usersharing':
-        post: sharing.createUser
-    'usersharing/:login':
-        put: sharing.updateUser
-        delete: sharing.removeUser
-
     'apps/:name/*': all: [utils.isAuthenticated, apps.app]
     'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
 
@@ -59,9 +54,8 @@ module.exports =
     'cozy/*': all: devices.oldReplication
 
     # Sharing notification request and answer
-    'services/sharing/request': 
-        post: sharing.request
-        delete: sharing.revoke
+    'services/sharing/request': post: sharing.request
+    'services/sharing/cancel': post: sharing.revoke
     'services/sharing/answer': post: sharing.answer
     'services/sharing/replication/*': all: sharing.replication
 
