@@ -105,6 +105,7 @@ module.exports.register = function(req, res, next) {
   }
 };
 
+<<<<<<< HEAD
 module.exports.loginIndex = function(req, res, next) {
   return getEnv(function(err, env) {
     if (err) {
@@ -118,6 +119,16 @@ module.exports.loginIndex = function(req, res, next) {
         env: env
       });
     }
+=======
+module.exports.loginIndex = function(req, res) {
+  return getEnv(function(err, env) {
+    if (!env.username) {
+      return res.redirect('/register');
+    }
+    return res.render('index', {
+      env: env
+    });
+>>>>>>> 583fcb3ab1d96cd7ff5df8108191a16f68c68cf8
   });
 };
 
@@ -149,13 +160,18 @@ module.exports.forgotPassword = function(req, res, next) {
           if (err) {
             return next(new Error('Email cannot be sent'));
           }
+<<<<<<< HEAD
           return res.sendStatus(204);
+=======
+          return res.send(204);
+>>>>>>> 583fcb3ab1d96cd7ff5df8108191a16f68c68cf8
         });
       });
     }
   });
 };
 
+<<<<<<< HEAD
 module.exports.resetPasswordIndex = function(req, res, next) {
   return getEnv(function(err, env) {
     if (err) {
@@ -168,6 +184,16 @@ module.exports.resetPasswordIndex = function(req, res, next) {
       } else {
         return res.redirect('/');
       }
+=======
+module.exports.resetPasswordIndex = function(req, res) {
+  return getEnv(function(err, env) {
+    if (Instance.getResetKey() === req.params.key) {
+      return res.render('index', {
+        env: env
+      });
+    } else {
+      return res.redirect('/');
+>>>>>>> 583fcb3ab1d96cd7ff5df8108191a16f68c68cf8
     }
   });
 };
