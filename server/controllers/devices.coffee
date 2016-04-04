@@ -1,6 +1,6 @@
 Client = require('request-json').JsonClient
 passport = require 'passport'
-deviceManager = require '../models/device'
+remoteAccess = require '../lib/remote_access'
 appManager = require '../lib/app_manager'
 {getProxy} = require '../lib/proxy'
 
@@ -34,18 +34,6 @@ randomString = (length) ->
     while (string.length < length)
         string = string + Math.random().toString(36).substr(2)
     return string.substr 0, length
-
-# helper functions
-extractCredentials = (header) ->
-    if header?
-        authDevice = header.replace 'Basic ', ''
-        authDevice = new Buffer(authDevice, 'base64').toString 'utf8'
-        # username should be 'owner'
-        username = authDevice.substr(0, authDevice.indexOf(':'))
-        password = authDevice.substr(authDevice.indexOf(':') + 1)
-        return [username, password]
-    else
-        return ["", ""]
 
 # Get proxy crededntials : usefull for device creation
 getCredentialsHeader = ->
@@ -90,7 +78,8 @@ checkLogin = (login, wantExist, cb)->
 
 initAuth = (req, cb) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
+    auth = req.headers['authorization']
+    [username, password] = remoteAccess.extractCredentials auth
     # Initialize user
     user = {}
     user.body = password: password
@@ -268,8 +257,7 @@ module.exports.remove = (req, res, next) ->
 
 module.exports.replication = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remote.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
             getProxy().web req, res, target: "http://#{dsHost}:#{dsPort}"
@@ -281,8 +269,7 @@ module.exports.replication = (req, res, next) ->
 
 module.exports.dsApi = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
             req.url = req.url.replace 'ds-api/', ''
@@ -295,8 +282,7 @@ module.exports.dsApi = (req, res, next) ->
 
 module.exports.getVersions = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
             appManager.versions (err, apps) ->
@@ -317,8 +303,7 @@ module.exports.getVersions = (req, res, next) ->
 module.exports.oldReplication = (req, res, next) ->
 
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Add his creadentials for CouchDB
             if process.env.NODE_ENV is "production"
