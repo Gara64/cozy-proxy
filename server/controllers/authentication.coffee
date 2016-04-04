@@ -9,15 +9,9 @@ localization = require '../lib/localization_manager'
 passwordKeys = require '../lib/password_keys'
 
 
-module.exports.registerIndex = (req, res, next) ->
+module.exports.registerIndex = (req, res) ->
     User.first (err, user) ->
-        if err?
-            error = new Error "[Error to access cozy user] " + err.code
-            error.status = 500
-            error.template =
-                name: 'error'
-            next error
-        else if user?
+        if user?
             res.redirect '/login'
         else
             localization.setLocale req.headers['accept-language']

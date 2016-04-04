@@ -133,24 +133,40 @@ commonJSJade = ->
     for file in glob.sync './build/server/views/**/*.js'
         prependFile.sync file, data
 
+# convert JSON lang files to JS
+buildJsInLocales = ->
+    path = require 'path'
+    for file in fs.readdirSync './client/app/locales/'
+        filename = './client/app/locales/' + file
+        template = fs.readFileSync filename, 'utf8'
+        exported = "module.exports = #{template};\n"
+        name     = file.replace '.json', '.js'
+        fs.writeFileSync "./build/client/app/locales/#{name}", exported
+        # add locales at the end of app.js
 
 task 'build', 'Build CoffeeScript to Javascript', ->
     logger.options.prefix = 'cake:build'
     logger.info "Start compilation..."
     command = """
-              rm -rf build &&
-              coffee -cb --output build/server server &&
-              coffee -cb --output build/ server.coffee
-              ./node_modules/.bin/jade -cPDH -o build/server/views server/views &&
-              cd client &&
+                rm -rf build &&
+                coffee -cb --output build/server server &&
+                coffee -cb --output build/ server.coffee
+                ./node_modules/.bin/jade -cPDH -o build/server/views server/views &&
+                cd client &&
                 ./node_modules/.bin/bower install &&
-                brunch build --production
+                brunch build --production &&
+                cd .. &&
+                mkdir -p build/client/app/locales/ &&
+                rm -rf build/client/app/locales/* &&
+                cp -R client/public build/client/ &&
+                rm -rf client/app/locales/*.coffee
               """
     exec command, (err, stdout, stderr) ->
         if err
             logger.error "An error has occurred while compiling:\n" + err
             process.exit 1
         else
+            buildJsInLocales()
             commonJSJade()
             logger.info "Compilation succeeded."
             process.exit 0
