@@ -38,7 +38,7 @@ module.exports.isDeviceAuthenticated = (header, callback) ->
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
-        updateCredentials 'Device' ->
+        updateCredentials 'Device', () ->
             callback(devices[login]? and devices[login] is password)
 
 
@@ -49,7 +49,7 @@ module.exports.isSharingAuthenticated = (header, callback) ->
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
-        updateCredentials 'Sharing' ->
+        updateCredentials 'Sharing', () ->
             callback(sharings[login]? and sharings[login] is password)
 
     
