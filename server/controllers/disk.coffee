@@ -1,16 +1,7 @@
-deviceManager = require '../models/device'
+remoteAccess = require '../lib/remote_access'
 request = require('request-json')
 exec = require('child_process').exec
 controllerClient = request.newClient('http://localhost:9002')
-
-# helper functions
-extractCredentials = (header) ->
-    if header?
-        authDevice = header.replace 'Basic ', ''
-        authDevice = new Buffer(authDevice, 'base64').toString 'ascii'
-        return authDevice.split ':'
-    else
-        return ["", ""]
 
 recoverDiskSpace = (cb) ->
     exec 'df -h', (err, rawDiskSpace) ->
@@ -49,8 +40,7 @@ getAuthController = ->
 
 module.exports.getSpace = (req, res, next) ->
     # Authenticate the device
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Recover disk space with controller
             controllerClient.setToken getAuthController()

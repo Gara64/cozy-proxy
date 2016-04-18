@@ -78,8 +78,8 @@ checkLogin = (login, wantExist, cb)->
 
 initAuth = (req, cb) ->
     # Authenticate the request
-    auth = req.headers['authorization']
-    [username, password] = remoteAccess.extractCredentials auth
+    header = req.headers['authorization']
+    [username, password] = remoteAccess.extractCredentials header
     # Initialize user
     user = {}
     user.body = password: password
@@ -258,7 +258,7 @@ module.exports.remove = (req, res, next) ->
 
 module.exports.replication = (req, res, next) ->
     # Authenticate the request
-    remote.isDeviceAuthenticated req.headers['authorization'], (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
             getProxy().web req, res, target: "http://#{dsHost}:#{dsPort}"
@@ -270,7 +270,8 @@ module.exports.replication = (req, res, next) ->
 
 module.exports.dsApi = (req, res, next) ->
     # Authenticate the request
-    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
+    header = req.headers['authorization']
+    remoteAccessAccess.isDeviceAuthenticated header, (auth) ->
         if auth
             # Forward request for DS.
             req.url = req.url.replace 'ds-api/', ''

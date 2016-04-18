@@ -1,12 +1,8 @@
 Client = require('request-json').JsonClient
-americano = require 'americano-cozy'
-async = require 'async'
 logger = require('printit')
     date: false
     prefix: 'models:Sharing'
 
-Sharing = require '../models/sharing'
-Device = require '../models/device'
 
 # Keep in memory the logins/passwords
 devices = {}
@@ -33,8 +29,9 @@ extractCredentials = module.exports.extractCredentials = (header) ->
 
 # Check if <login>:<password> is authenticated
 module.exports.isDeviceAuthenticated = (header, callback) ->
-    [login, password] = remote.extractCredentials header
+    [login, password] = extractCredentials header
     isPresent = devices[login]? and devices[login] is password
+
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
@@ -44,7 +41,7 @@ module.exports.isDeviceAuthenticated = (header, callback) ->
 
 # Check if <login>:<password> is authenticated
 module.exports.isSharingAuthenticated = (header, callback) ->
-    [login, password] = remote.extractCredentials header
+    [login, password] = extractCredentials header
     isPresent = sharings[login]? and sharings[login] is password
     if isPresent or process.env.NODE_ENV is "development"
         callback true
@@ -55,16 +52,18 @@ module.exports.isSharingAuthenticated = (header, callback) ->
     
 
 # Update credentials in memory
-updateCredentials = (model, callback) ->
+updateCredentials = module.exports.updateCredentials = (model, callback) ->
     if model is 'Device'
         path = "request/device/all"
         cred = devices
     else if model is "Sharing"
         path = "request/sharing/all"
         cred = sharings
+    else
+        callback() if callback?
 
     # Retrieve all model's results
-    client.post path, (err, results) ->
+    client.post path, {}, (err, res, results) ->
         cred = {}
         if err?
             logger.error err
@@ -80,8 +79,8 @@ updateCredentials = (model, callback) ->
                         callback err
                     else
                         for access in accesses
-                            # Check if access correspond to a Sharing
-                            if access.key in sharings
+                            # Check if access correspond to a result
+                            if access.key in results
                                 cred[access.value.login] = access.value.token
                     callback() if callback?
             else
