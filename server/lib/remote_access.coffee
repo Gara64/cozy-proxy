@@ -20,7 +20,7 @@ extractCredentials = module.exports.extractCredentials = (header) ->
     if header?
         authDevice = header.replace 'Basic ', ''
         authDevice = new Buffer(authDevice, 'base64').toString 'utf8'
-        # username should be 'owner'
+        # username should be 'owner', a device name or a sharing login
         username = authDevice.substr(0, authDevice.indexOf(':'))
         password = authDevice.substr(authDevice.indexOf(':') + 1)
         return [username, password]
@@ -43,31 +43,48 @@ module.exports.isDeviceAuthenticated = (header, callback) ->
 module.exports.isSharingAuthenticated = (header, callback) ->
     [login, password] = extractCredentials header
     isPresent = sharings[login]? and sharings[login] is password
+
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
         updateCredentials 'Sharing', () ->
             callback(sharings[login]? and sharings[login] is password)
 
-    
+# Check if a sharing recipient is authenticated by its token
+# This differs from the regular authentication as the recipient does not have
+# any access on the documents, but can still send requests for a sharing
+module.exports.isTargetAuthenticated = (cred, callback) ->
+
+    # Get the sharing doc
+    client.get "data/#{cred.shareID}", (err, result, doc) ->
+        if err or not doc?.targets?
+            callback false
+        else
+            # Get the target by its token
+            target = doc.targets.filter (t)-> t.token is cred.token
+            target = target[0]
+
+            callback(target?, doc, target)
+
 
 # Update credentials in memory
 updateCredentials = module.exports.updateCredentials = (model, callback) ->
     if model is 'Device'
         path = "request/device/all"
-        cred = devices
+        devices = {}
+        cache = devices
     else if model is "Sharing"
         path = "request/sharing/all"
-        cred = sharings
+        sharings = {}
+        cache = sharings
     else
         callback() if callback?
 
     # Retrieve all model's results
     client.post path, {}, (err, res, results) ->
-        cred = {}
         if err?
             logger.error err
-            callback err
+            callback? err
         else
             if results?
                 # Retrieve all accesses
@@ -81,11 +98,7 @@ updateCredentials = module.exports.updateCredentials = (model, callback) ->
                         for access in accesses
                             # Check if access correspond to a result
                             if access.key in results
-                                cred[access.value.login] = access.value.token
-                    callback() if callback?
+                                cache[access.value.login] = access.value.token
+                    callback?()
             else
-                callback() if callback?
-
-
-
-
+                callback()?

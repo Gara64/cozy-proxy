@@ -5,8 +5,6 @@ disk = require './disk'
 apps = require './applications'
 experiment = require './experimental'
 sharing = require './sharing'
-replication = require '../lib/replication'
-
 utils = require '../middlewares/authentication'
 
 passport = require 'passport'
@@ -55,8 +53,9 @@ module.exports =
     'cozy/*': all: devices.oldReplication
 
     # Sharing notification request and answer
-    'services/sharing/request': post: sharing.request
-    'services/sharing/cancel': post: sharing.revoke
+    'services/sharing/request': post: [sharing.rateLimiter, sharing.request]
+    'services/sharing': delete: sharing.revoke
+    'services/sharing/target': delete: sharing.revokeTarget
     'services/sharing/answer': post: sharing.answer
     'services/sharing/replication/*': all: sharing.replication
 

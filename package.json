@@ -19,6 +19,7 @@
     "cozydb": "0.1.10",
     "graceful-fs": "3.0.8",
     "http-proxy": "1.12.0",
+    "limiter": "1.1.0",
     "locale": "0.0.14",
     "lockedpath": "0.1.1",
     "node-polyglot": "0.3.0",
