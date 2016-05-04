@@ -1,8 +1,7 @@
 Client = require('request-json').JsonClient
 logger = require('printit')
     date: false
-    prefix: 'models:Sharing'
-
+    prefix: 'lib:remote_access'
 
 # Keep in memory the logins/passwords
 devices = {}
@@ -15,7 +14,8 @@ client = new Client "http://#{dsHost}:#{dsPort}/"
 if process.env.NODE_ENV is "production" or process.env.NODE_ENV is "test"
     client.setBasicAuth process.env.NAME, process.env.TOKEN
 
-# helper functions
+
+# helper function
 extractCredentials = module.exports.extractCredentials = (header) ->
     if header?
         authDevice = header.replace 'Basic ', ''
@@ -27,7 +27,8 @@ extractCredentials = module.exports.extractCredentials = (header) ->
     else
         return ["", ""]
 
-# Check if <login>:<password> is authenticated
+
+# Check if <login>:<password> is authenticated for a device
 module.exports.isDeviceAuthenticated = (header, callback) ->
     [login, password] = extractCredentials header
     isPresent = devices[login]? and devices[login] is password
@@ -39,7 +40,7 @@ module.exports.isDeviceAuthenticated = (header, callback) ->
             callback(devices[login]? and devices[login] is password)
 
 
-# Check if <login>:<password> is authenticated
+# Check if <login>:<password> is authenticated for a sharing
 module.exports.isSharingAuthenticated = (header, callback) ->
     [login, password] = extractCredentials header
     isPresent = sharings[login]? and sharings[login] is password
@@ -50,18 +51,24 @@ module.exports.isSharingAuthenticated = (header, callback) ->
         updateCredentials 'Sharing', () ->
             callback(sharings[login]? and sharings[login] is password)
 
+
 # Check if a sharing recipient is authenticated by its token
 # This differs from the regular authentication as the recipient does not have
-# any access on the documents, but can still send requests for a sharing
-module.exports.isTargetAuthenticated = (cred, callback) ->
+# any access on the documents, but can still send some sharing requests
+module.exports.isTargetAuthenticated = (credential, callback) ->
+    console.log 'credentials : ' + JSON.stringify credential
+    unless credential.shareID? and credential.token?
+        return callback false
 
     # Get the sharing doc
-    client.get "data/#{cred.shareID}", (err, result, doc) ->
+    client.get "data/#{credential.shareID}", (err, result, doc) ->
         if err or not doc?.targets?
             callback false
         else
+            console.log JSON.stringify doc.targets
             # Get the target by its token
-            target = doc.targets.filter (t)-> t.token is cred.token
+            target = doc.targets.filter (t) ->
+                t.token is credential.token or t.preToken is credential.token
             target = target[0]
 
             callback(target?, doc, target)
