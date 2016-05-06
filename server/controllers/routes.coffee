@@ -43,7 +43,7 @@ module.exports =
         delete: devices.remove
 
     'apps/:name/': all: [utils.isAuthenticated, apps.app]
-    
+
     'apps/:name*': all:[utils.isAuthenticated, apps.app]
 
     # 'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]

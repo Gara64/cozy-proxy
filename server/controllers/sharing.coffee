@@ -1,11 +1,12 @@
-Client = require('request-json').JsonClient
+Client       = require('request-json').JsonClient
 remoteAccess = require '../lib/remote_access'
-request = require 'request-json'
-RateLimiter = require('limiter').RateLimiter
-{getProxy} = require '../lib/proxy'
+request      = require 'request-json'
+utils        = require '../helpers/utils'
+RateLimiter  = require('limiter').RateLimiter
+{getProxy}   = require '../lib/proxy'
 
-dsHost = 'localhost'
-dsPort = '9101'
+dsHost   = 'localhost'
+dsPort   = '9101'
 clientDS = new Client "http://#{dsHost}:#{dsPort}/"
 
 if process.env.NODE_ENV is "production" or process.env.NODE_ENV is "test"
@@ -29,7 +30,7 @@ revokeFromSharer = (shareID, callback) ->
     path = "request/sharing/byShareID"
     # Get the sharing doc based on the shareID
     clientDS.post path, key: shareID, (err, result, body) ->
-        if err? or body.length isnt 1
+        if err? or body.error? or body.length isnt 1
             callback err
         else
             id = body[0]?.id
@@ -92,16 +93,20 @@ module.exports.request = (req, res, next) ->
     request = req.body
 
     # Check mandatory fields
-    unless request.shareID? and request.sharerUrl? and
-    request.recipientUrl? and request.rules? and request.desc? and
-    request.preToken?
-        err = new Error "Bad request"
+    if utils.hasEmptyField request, ["shareID", "sharerUrl", "recipientUrl", \
+                                     "rules", "desc", "preToken"]
+        err        = new Error "Bad request"
+        err.status = 400
+        return next err
+    # Each rule must have an id and a docType
+    if utils.hasIncorrectStructure request.rules, ["id", "docType"]
+        err        = new Error "Bad request"
         err.status = 400
         return next err
 
     # Create a Sharing doc and send a notification
     createSharing request, (err, doc) ->
-        if err?
+        if err? or not doc._id?
             error = new Error "The sharing cannot be created"
             error.status = 400
             next error
@@ -176,19 +181,28 @@ module.exports.answer = (req, res, next) ->
     answer = req.body
 
     # Check mandatory fields
-    unless answer.recipientUrl? and answer.accepted?
+    if utils.hasEmptyField answer, ["recipientUrl", "accepted"]
         err = new Error "Bad request"
         err.status = 400
         return next err
 
-    header = req.headers['authorization']
+    # If the recipient accepts the sharing but does not provide a token then
+    # the sharer cannot process the answer
+    if answer.accepted and utils.hasEmptyField answer, ["token"]
+        err        = new Error "Bad request"
+        err.status = 400
+        return next err
+
+    # The "token" we extract from the header is actually the preToken that was
+    # sent to the recipient
+    header           = req.headers['authorization']
     [shareID, token] = remoteAccess.extractCredentials header
-    credential = {shareID, token}
+    credential       = {shareID, token}
 
     # Authenticate the request
     remoteAccess.isTargetAuthenticated credential, (auth) ->
         if auth
-            answer.shareID = shareID
+            answer.shareID  = shareID
             answer.preToken = token
 
             clientDS.post req.url, answer, (err, result, body) ->
