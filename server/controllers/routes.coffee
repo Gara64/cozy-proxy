@@ -4,7 +4,7 @@ devices = require './devices'
 disk = require './disk'
 apps = require './applications'
 experiment = require './experimental'
-
+sharing = require './sharing'
 utils = require '../middlewares/authentication'
 
 passport = require 'passport'
@@ -42,15 +42,24 @@ module.exports =
         put: devices.update
         delete: devices.remove
 
+    'apps/:name/': all: [utils.isAuthenticated, apps.app]
+    
+    'apps/:name*': all:[utils.isAuthenticated, apps.app]
 
-    'apps/:name/*': all: [utils.isAuthenticated, apps.app]
-    'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
+    # 'apps/:name*': all: [utils.isAuthenticated, apps.appWithSlash]
 
     'replication/*': all: devices.replication
     'ds-api/*': all: devices.dsApi
     'versions': get: devices.getVersions
     # Temporary - 01/05/14
     'cozy/*': all: devices.oldReplication
+
+    # Sharing notification request and answer
+    'services/sharing/request': post: [sharing.rateLimiter, sharing.request]
+    'services/sharing': delete: sharing.revoke
+    'services/sharing/target': delete: sharing.revokeTarget
+    'services/sharing/answer': post: sharing.answer
+    'services/sharing/replication/*': all: sharing.replication
 
     '.well-known/host-meta.?:ext': get: experiment.webfingerHostMeta
     '.well-known/:module': all: experiment.webfingerAccount

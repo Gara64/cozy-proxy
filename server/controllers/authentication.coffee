@@ -8,6 +8,22 @@ Instance     = require '../models/instance'
 helpers      = require '../lib/helpers'
 localization = require '../lib/localization_manager'
 passwordKeys = require '../lib/password_keys'
+otpManager   = require '../lib/2fa_manager'
+
+
+getEnv = (callback) ->
+    User.getUsername (err, username) ->
+        return callback err if err
+
+        otpManager.getAuthType (err, otp) ->
+            return callback err if err
+
+            env =
+                username: username
+                otp:      !!otp
+                apps:     Object.keys require('../lib/router').getRoutes()
+
+            callback null, env
 
 
 getEnv = (callback) ->
@@ -86,6 +102,7 @@ module.exports.loginIndex = (req, res, next) ->
             next new Error err
         else
             return res.redirect '/register' unless env.username
+            res.set 'X-Cozy-Login-Page', 'true'
             res.render 'index', env: env
 
 
@@ -147,7 +164,7 @@ module.exports.resetPassword = (req, res, next) ->
                         if err? then next new Error err
                         else
                             Instance.resetKey = null
-                            passwordKeys.resetKeys (err) ->
+                            passwordKeys.resetKeys newPassword, (err) ->
 
                                 if err? then next new Error err
                                 else

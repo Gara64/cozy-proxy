@@ -1,8 +1,10 @@
+path = require 'path'
+
 configurePassport = require './lib/passport_configurator'
 router            = require './lib/router'
 {initializeProxy} = require './lib/proxy'
 localization      = require './lib/localization_manager'
-Device            = require './models/device'
+remoteAccess      = require './lib/remote_access'
 
 
 module.exports = (app, server, callback) ->
@@ -14,15 +16,27 @@ module.exports = (app, server, callback) ->
     configurePassport()
 
     # Pass localization helpers to app.locals to access them in templates
-    app.locals.t      = localization.t
+    app.locals.t         = localization.t
     app.locals.getLocale = localization.getLocale
+
+    # Try to get assets definitions from root (only valid in build, not on
+    # watch mode)
+    try
+        assets = require(path.join __dirname, '../webpack-assets').main
+    catch
+        assets =
+            js: 'app.js'
+            css: 'app.css'
+    app.locals.assets = assets
 
     # initialize Proxy server
     initializeProxy app, server
 
     # initialize device authentication
     # reset (load) and display the routes
-    Device.update ->
-        router.reset ->
-            router.displayRoutes ->
-                callback app, server
+
+    remoteAccess.updateCredentials 'Device', () ->
+        remoteAccess.updateCredentials 'Sharing', () ->
+            router.reset ->
+                router.displayRoutes ->
+                    callback app, server

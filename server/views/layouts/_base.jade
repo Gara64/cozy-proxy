@@ -1,5 +1,5 @@
 doctype html
-html(lang=getLocale())
+html(lang=getLocale().language)
     head
         meta(charset="utf-8")
         block title
@@ -26,9 +26,10 @@ html(lang=getLocale())
         meta(name="msapplication-TileImage", content="/mstile-144x144.png")
         meta(name="theme-color", content="#20a8f1")
 
-        link(rel='stylesheet', href='/fonts/fonts.css')
-        link(rel='stylesheet', href='/styles/app.css')
+        link(rel="stylesheet", href="/fonts/fonts.css")
+        link(rel="stylesheet", href="/#{assets.css}")
+
+        block js
 
     body
         block content
-        block js

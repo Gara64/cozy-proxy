@@ -1,16 +1,15 @@
 Client = require('request-json').JsonClient
 passport = require 'passport'
-deviceManager = require '../models/device'
+remoteAccess = require '../lib/remote_access'
 appManager = require '../lib/app_manager'
 {getProxy} = require '../lib/proxy'
 
+log = require('printit')
+    date: false
+    prefix: 'controllers:devices'
 
-couchdbHost = process.env.COUCH_HOST or 'localhost'
-couchdbPort = process.env.COUCH_PORT or '5984'
 
-dsHost = 'localhost'
-dsPort = '9101'
-clientDS = new Client "http://#{dsHost}:#{dsPort}/"
+clientDS = new Client urlHelper.dataSystem.url()
 
 if process.env.NODE_ENV is "production" or process.env.NODE_ENV is "test"
     clientDS.setBasicAuth process.env.NAME, process.env.TOKEN
@@ -40,12 +39,13 @@ extractCredentials = (header) ->
     if header?
         authDevice = header.replace 'Basic ', ''
         authDevice = new Buffer(authDevice, 'base64').toString 'utf8'
-        # username should be 'owner'
+        # username should be 'owner' or a device name
         username = authDevice.substr(0, authDevice.indexOf(':'))
         password = authDevice.substr(authDevice.indexOf(':') + 1)
         return [username, password]
     else
         return ["", ""]
+
 
 # Get proxy crededntials : usefull for device creation
 getCredentialsHeader = ->
@@ -90,10 +90,13 @@ checkLogin = (login, wantExist, cb)->
 
 initAuth = (req, cb) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
+    header = req.headers['authorization']
+    [username, password] = remoteAccess.extractCredentials header
     # Initialize user
     user = {}
-    user.body = password: password
+    user.body =
+        username: username
+        password: password
     req.headers['authorization'] = undefined
     cb user
 
@@ -126,12 +129,99 @@ createDevice = (device, cb) ->
 
 # Update device :
 #       * update device access
-updateDevice = (oldDevice, device, cb) ->
+updateDevice = (oldDevice, device, callback) ->
+
     path = "request/access/byApp/"
-    clientDS.post path, key: oldDevice.id, (err, result, accesses) ->
+    clientDS.post path, key: oldDevice._id, (err, result, accesses) ->
+
+        return callback err if err
+
+        if accesses.length is 0
+            error = new Error "No access to this app."
+            return callback error
+
+        oldAccess = accesses[0].value
+
         # Update access for this device
         access =
-            login: device.login
+            login: oldAccess.login
+            password: oldAccess.token
+            app: oldAccess.app
+            permissions: device.permissions or oldAccess.permissions
+
+        path = "access/#{access.app}/"
+        clientDS.put path, access, (err, result, body) ->
+
+            return callback err if err
+
+            oldDevice.login = device.login
+            delete oldDevice.permissions
+            path = "data/#{oldDevice._id}"
+            clientDS.put path, oldDevice, (err, result, body) ->
+
+                data =
+                    login: access.login
+                    password: access.password
+                    permissions: access.permissions
+
+                # Return access to device
+                callback err, data
+
+
+# Remove device :
+#       * remove device access
+#       * remove device document
+removeDevice = (device, cb) ->
+    id = device._id
+    # Remove Access
+    clientDS.del "access/#{id}/", (err, result, body) ->
+        if err?
+            error = new Error err
+            error.status = 400
+            cd error
+        else
+            # Remove Device
+            clientDS.del "data/#{id}/", (err, result, body) ->
+                if err?
+                    error = new Error err
+                    error.status = 400
+                    cd error
+                else
+                    cb null
+
+# Create user :
+#       * create user document
+#       * create user access
+createUser = (user, cb) ->
+    user.docType = "UserSharing"
+    # Create device document
+    clientDS.post "data/", user, (err, result, docInfo) ->
+        return cb(err) if err?
+        
+        # Create access for this device
+        access =
+            login: user.login
+            password: randomString 32
+            app: docInfo._id
+            permissions: user.permissions or defaultPermissions
+        clientDS.post 'access/', access, (err, result, body) ->
+            return cb(err) if err?
+            data =
+                password: access.password
+                login: user.login
+                permissions: access.permissions
+            # Return access to device
+            cb null, data
+
+
+# Update user :
+#       * update user access
+updateUser = (oldUser, user, cb) ->
+    path = "request/access/byApp/"
+    clientDS.post path, key: oldUser.id, (err, result, accesses) ->
+        # Update access for this device
+        access =
+            login: user.login
             password: randomString 32
             app: oldDevice.id
             permissions: device.permissions or defaultPermissions
@@ -144,8 +234,8 @@ updateDevice = (oldDevice, device, cb) ->
             else
                 oldDevice.login = device.login
                 delete oldDevice.permissions
-                path = "data/#{oldDevice.id}"
-                clientDS.put path, oldDevice, (err, result, body) ->
+                clientDS.put "data/#{oldDevice.id}", oldDevice,
+                (err, result, body) ->
                     data =
                         password: access.password
                         login: device.login
@@ -154,11 +244,11 @@ updateDevice = (oldDevice, device, cb) ->
                     cb null, data
 
 
-# Remove device :
-#       * remove device access
-#       * remove device document
-removeDevice = (device, cb) ->
-    id = device.id
+# Remove user :
+#       * remove user access
+#       * remove user document
+removeDevice = (user, cb) ->
+    id = user.id
     # Remove Access
     clientDS.del "access/#{id}/", (err, result, body) ->
         if err?
@@ -176,8 +266,6 @@ removeDevice = (device, cb) ->
                     cb null
 
 
-
-
 ## Controller actions
 
 module.exports.create = (req, res, next) ->
@@ -185,7 +273,7 @@ module.exports.create = (req, res, next) ->
     # Check if user is authenticated
     authenticator = passport.authenticate 'local', (err, user) ->
         if err
-            console.log err
+            log.warn err
             next err
         else if user is undefined or not user
             error = new Error "Bad credentials"
@@ -193,6 +281,7 @@ module.exports.create = (req, res, next) ->
             next error
         else
             # Check if name is correctly declared and device doesn't exist
+            console.log 'body : ' + JSON.stringify req.body
             device = req.body
             checkLogin device.login, false, (err) ->
                 return next err if err?
@@ -240,6 +329,105 @@ module.exports.update = (req, res, next) ->
 
 
 module.exports.remove = (req, res, next) ->
+    # Authenticate the request
+    [username, password] = extractCredentials req.headers['authorization']
+    deviceName = req.params.login
+
+    remove = =>
+        checkLogin deviceName, true, (err, device) ->
+            return next err if err?
+            # Remove device
+            removeDevice device, (err) ->
+                if err?
+                    next err
+                else
+                    res.sendStatus 204
+
+    if deviceName is username
+        deviceManager.isAuthenticated username, password, (auth) =>
+            if auth
+                remove()
+            else
+                error = new Error "Request unauthorized"
+                error.status = 401
+                next error
+    else
+        authenticator =
+            passport.authenticate 'local', (err, user) ->
+                if err
+                    console.log err
+                    next err
+                else if user is undefined or not user
+                    error = new Error "Bad credentials"
+                    error.status = 401
+                    next error
+                else
+                    remove()
+
+        initAuth req, (user) ->
+            # Check if request is authenticated
+            authenticator user, res
+
+module.exports.createUser = (req, res, next) ->
+
+    # Check if user is authenticated
+    authenticator = passport.authenticate 'local', (err, user) ->
+        if err
+            console.log err
+            next err
+        else if user is undefined or not user
+            error = new Error "Bad credentials"
+            error.status = 401
+            next error
+        else
+            # Check if name is correctly declared and device doesn't exist
+            user = req.body
+            checkLogin user.login, false, (err) ->
+                return next err if err?
+                # Create device
+                user.docType = "UserSharing"
+                createUser user, (err, data) ->
+                    if err?
+                        next err
+                    else
+                        res.send 201, data
+
+
+    initAuth req, (user) ->
+        # Check if request is authenticated
+        authenticator user, res
+
+
+module.exports.updateUser = (req, res, next) ->
+
+    authenticator = passport.authenticate 'local', (err, user) ->
+        if err
+            console.log err
+            next err
+        else if user is undefined or not user
+            error = new Error "Bad credentials"
+            error.status = 401
+            next error
+        else
+            # Check if name is correctly declared and device exists
+            login = req.params.login
+            user = req.body
+            checkLogin login, true, (err, oldDevice) ->
+                return next err if err?
+                # Update device
+                user.docType = "UserSharing"
+                updateUser oldUser, user, (err, data) ->
+                    if err?
+                        next err
+                    else
+                        res.send 200, data
+
+    initAuth req, (user) ->
+        # Check if request is authenticated
+        authenticator user, res
+
+
+module.exports.removeUser = (req, res, next) ->
 
     authenticator = passport.authenticate 'local', (err, user) ->
         if err
@@ -256,11 +444,11 @@ module.exports.remove = (req, res, next) ->
             checkLogin login, true, (err, device) ->
                 return next err if err?
                 # Remove device
-                removeDevice device, (err) ->
+                removeUser user, (err) ->
                     if err?
                         next err
                     else
-                        res.sendStatus 204
+                        res.send 204
 
     initAuth req, (user) ->
         # Check if request is authenticated
@@ -269,11 +457,10 @@ module.exports.remove = (req, res, next) ->
 
 module.exports.replication = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
-            getProxy().web req, res, target: "http://#{dsHost}:#{dsPort}"
+            getProxy().web req, res, target: urlHelper.dataSystem.url()
         else
             error = new Error "Request unauthorized"
             error.status = 401
@@ -282,12 +469,13 @@ module.exports.replication = (req, res, next) ->
 
 module.exports.dsApi = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
+    authHeader = req.header('authorization') or req.query.authorization
+    [username, password] = extractCredentials authHeader
     deviceManager.isAuthenticated username, password, (auth) ->
         if auth
             # Forward request for DS.
             req.url = req.url.replace 'ds-api/', ''
-            getProxy().web req, res, target: "http://#{dsHost}:#{dsPort}"
+            getProxy().web req, res, target: urlHelper.dataSystem.url()
         else
             error = new Error "Request unauthorized"
             error.status = 401
@@ -296,8 +484,7 @@ module.exports.dsApi = (req, res, next) ->
 
 module.exports.getVersions = (req, res, next) ->
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Forward request for DS.
             appManager.versions (err, apps) ->
@@ -318,8 +505,7 @@ module.exports.getVersions = (req, res, next) ->
 module.exports.oldReplication = (req, res, next) ->
 
     # Authenticate the request
-    [username, password] = extractCredentials req.headers['authorization']
-    deviceManager.isAuthenticated username, password, (auth) ->
+    remoteAccess.isDeviceAuthenticated req.headers['authorization'], (auth) ->
         if auth
             # Add his creadentials for CouchDB
             if process.env.NODE_ENV is "production"
@@ -337,8 +523,7 @@ module.exports.oldReplication = (req, res, next) ->
             # the Cozy itself which is awesome because it would be easy to
             # add a permission layer and makes Cozy a true open platform
             # (easy desktop/mobile clients)
-            target = "http://#{couchdbHost}:#{couchdbPort}"
-            getProxy().web req, res, target: target
+            getProxy().web req, res, target: urlHelper.couch.url()
         else
             error = new Error "Request unauthorized"
             error.status = 401

@@ -1,7 +1,16 @@
+.node-version
+.idea
+
 node_modules
 bower_components
+
 *.swp
 *.log
 *.transifex.coffee
 
+locales
+!locales/en.json
+!build/server/locales
+
 client/public
+build

@@ -8,8 +8,9 @@ task 'jade', 'Transform jade file to CommonJS format', ->
     for file in glob.sync './build/server/views/**/*.js'
         prependFile.sync file, data
 
-task 'locales', 'convert JSON lang files to JS', ->
-    # server files
+# convert JSON lang files to JS
+buildJsInLocales = ->
+    path = require 'path'
     for file in fs.readdirSync './server/locales/'
         filename = './server/locales/' + file
         template = fs.readFileSync filename, 'utf8'

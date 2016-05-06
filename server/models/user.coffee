@@ -1,17 +1,18 @@
-americano = require 'americano-cozy'
-Client    = require('request-json').JsonClient
+cozydb = require 'cozydb'
+Client = require('request-json').JsonClient
+urlHelper = require 'cozy-url-sdk'
 
 helpers      = require '../lib/helpers'
 timezones    = require '../lib/timezones'
 localization = require '../lib/localization_manager'
 
 
-client = new Client "http://localhost:9101/"
+client = new Client urlHelper.dataSystem.url()
 if process.env.NODE_ENV in ['production', 'test']
     client.setBasicAuth process.env.NAME, process.env.TOKEN
 
 
-module.exports = User = americano.getModel 'User',
+module.exports = User = cozydb.getModel 'User',
     email: String
     password: String
     salt: String
@@ -20,6 +21,10 @@ module.exports = User = americano.getModel 'User',
     owner: Boolean
     allow_stats: Boolean
     activated: Boolean
+    otpKey: String
+    hotpCounter: Number
+    authType: String
+
 
 
 User.createNew = (data, callback) ->

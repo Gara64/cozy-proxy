@@ -4,7 +4,10 @@ Auth state-machine
 Exposed streams and properties used by the Login and ResetPassword views.
 ###
 
-StateModel = require 'lib/state_model'
+Bacon = require 'baconjs'
+$     = require 'jquery'
+
+StateModel = require '../lib/state_model'
 
 
 module.exports = class Auth extends StateModel
@@ -48,7 +51,7 @@ module.exports = class Auth extends StateModel
     - `form`: an object containing the form values
     ###
     signinSubmit: (form) =>
-        data = JSON.stringify password: form.password
+        data = JSON.stringify password: form.password, authcode: form.auth
         req = Bacon.fromPromise $.post form.action, data
 
         # Plug success response to `@success` stream and set `@alert` to false
