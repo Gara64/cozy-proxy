@@ -1,6 +1,7 @@
 {getProxy} = require '../lib/proxy'
 router = require '../lib/router'
 statusChecker = require '../lib/status_checker'
+urlHelper = require 'cozy-url-sdk'
 
 module.exports.defaultRedirect = (req, res) ->
     homePort = process.env.DEFAULT_REDIRECT_PORT

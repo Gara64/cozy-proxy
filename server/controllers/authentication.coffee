@@ -8,6 +8,22 @@ Instance     = require '../models/instance'
 helpers      = require '../lib/helpers'
 localization = require '../lib/localization_manager'
 passwordKeys = require '../lib/password_keys'
+otpManager   = require '../lib/2fa_manager'
+
+
+getEnv = (callback) ->
+    User.getUsername (err, username) ->
+        return callback err if err
+
+        otpManager.getAuthType (err, otp) ->
+            return callback err if err
+
+            env =
+                username: username
+                otp:      !!otp
+                apps:     Object.keys require('../lib/router').getRoutes()
+
+            callback null, env
 
 
 getEnv = (callback) ->
