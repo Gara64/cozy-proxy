@@ -1,5 +1,7 @@
 appManager = require '../lib/app_manager'
+staticFile = require 'node-static'
 {getProxy} = require '../lib/proxy'
+urlHelper = require 'cozy-url-sdk'
 send = require 'send'
 lockedpath = require 'lockedpath'
 logger = require('printit')
@@ -14,6 +16,12 @@ getPathForStaticApp = (appName, path, root, callback) ->
 
 forwardRequest = (req, res, errTemplate, next) ->
     appName = req.params.name
+    urlHelperSlug = appName.replace 'data-system', 'dataSystem'
+    appSchema = 'http'
+    appHost = 'localhost'
+    if urlHelper[urlHelperSlug]
+        appSchema = urlHelper[urlHelperSlug].schema()
+        appHost = urlHelper[urlHelperSlug].host()
     shouldStart = -1 is req.url.indexOf 'socket.io'
     appManager.ensureStarted appName, shouldStart, (err, result) ->
         if not res.connection or res.connection.destroyed
@@ -25,9 +33,11 @@ forwardRequest = (req, res, errTemplate, next) ->
             next error
         else if result.type is 'static'
             getPathForStaticApp appName, req.url, result.path, (url) ->
-                send(req, url).pipe res
+                file = new staticFile.Server url
+                file.serve req, res
         else
-            getProxy().web req, res, target: "http://localhost:#{result.port}"
+            url = "#{appSchema}://#{appHost}:#{result.port}"
+            getProxy().web req, res, target: url
 
 module.exports.app = (req, res, next) ->
     appName = req.params.name
@@ -36,6 +46,7 @@ module.exports.app = (req, res, next) ->
         name: if err.code is 404 then 'not_found' else 'error_app'
     forwardRequest req, res, errTemplate, next
 
+
 module.exports.publicApp = (req, res, next) ->
     appName = req.params.name
     req.url = req.url.substring "/public/#{appName}".length
@@ -43,5 +54,6 @@ module.exports.publicApp = (req, res, next) ->
     errTemplate = (err) ->
         name: 'error_public'
     forwardRequest req, res, errTemplate, next
+
 
 module.exports.appWithSlash = (req, res) -> res.redirect "#{req.url}/"

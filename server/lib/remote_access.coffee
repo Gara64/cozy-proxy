@@ -28,6 +28,43 @@ extractCredentials = module.exports.extractCredentials = (header) ->
         return ["", ""]
 
 
+# Update credentials in memory
+updateCredentials = module.exports.updateCredentials = (model, callback) ->
+    if model is 'Device'
+        path = "request/device/all"
+        devices = {}
+        cache = devices
+    else if model is "Sharing"
+        path = "request/sharing/all"
+        sharings = {}
+        cache = sharings
+    else
+        callback() if callback?
+
+    # Retrieve all model's results
+    client.post path, {}, (err, res, results) ->
+        if err? or results?.error?
+            logger.error err
+            callback? err
+        else
+            if results?
+                # Retrieve all accesses
+                results = results.map (result) ->
+                    return result.id
+                client.post "request/access/byApp/", {}, (err, res, accesses) ->
+                    if err?
+                        logger.error err
+                        callback err
+                    else
+                        for access in accesses
+                            # Check if access correspond to a result
+                            if access.key in results
+                                cache[access.value.login] = access.value.token
+                    callback?()
+            else
+                callback()?
+
+
 # Check if <login>:<password> is authenticated for a device
 module.exports.isDeviceAuthenticated = (header, callback) ->
     [login, password] = extractCredentials header
@@ -36,7 +73,7 @@ module.exports.isDeviceAuthenticated = (header, callback) ->
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
-        updateCredentials 'Device', () ->
+        updateCredentials 'Device', ->
             callback(devices[login]? and devices[login] is password)
 
 
@@ -48,7 +85,7 @@ module.exports.isSharingAuthenticated = (header, callback) ->
     if isPresent or process.env.NODE_ENV is "development"
         callback true
     else
-        updateCredentials 'Sharing', () ->
+        updateCredentials 'Sharing', ->
             callback(sharings[login]? and sharings[login] is password)
 
 
@@ -74,38 +111,4 @@ module.exports.isTargetAuthenticated = (credential, callback) ->
             callback(target?, doc, target)
 
 
-# Update credentials in memory
-updateCredentials = module.exports.updateCredentials = (model, callback) ->
-    if model is 'Device'
-        path = "request/device/all"
-        devices = {}
-        cache = devices
-    else if model is "Sharing"
-        path = "request/sharing/all"
-        sharings = {}
-        cache = sharings
-    else
-        callback() if callback?
 
-    # Retrieve all model's results
-    client.post path, {}, (err, res, results) ->
-        if err?
-            logger.error err
-            callback? err
-        else
-            if results?
-                # Retrieve all accesses
-                results = results.map (result) ->
-                    return result.id
-                client.post "request/access/byApp/", {}, (err, res, accesses) ->
-                    if err?
-                        logger.error err
-                        callback err
-                    else
-                        for access in accesses
-                            # Check if access correspond to a result
-                            if access.key in results
-                                cache[access.value.login] = access.value.token
-                    callback?()
-            else
-                callback()?

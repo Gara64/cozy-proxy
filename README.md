@@ -66,6 +66,7 @@ $ npm install
 $ npm run watch
 ```
 
+
 ### To hack cozy-proxy using the cozy vagrant
 
 - Forward a new port from the virtual machine (for example: `config.vm.network :forwarded_port, guest: 9555, host: 9555` in file Vagrantfile)
@@ -85,6 +86,11 @@ $ npm run test
 ```
 
 Note: a running data-system is required for the tests.
+
+## Contribute with Transifex
+
+Transifex can be used the same way as git. It can push or pull translations. The config file in the .tx repository configure the way Transifex is working : it will get the json files from the locales repository.
+If you want to learn more about how to use this tool, I'll invite you to check [this](http://docs.transifex.com/introduction/) tutorial.
 
 ## Contribute with Transifex
 

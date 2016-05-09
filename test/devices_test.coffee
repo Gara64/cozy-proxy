@@ -1,11 +1,12 @@
-fs = require("fs")
+fs = require "fs"
 should = require('chai').Should()
-async = require('async')
+async = require 'async'
+urlHelper = require 'cozy-url-sdk'
 
 helpers = require './helpers'
 client = helpers.getClient()
 Client = require('request-json').JsonClient
-clientDS = new Client "http://localhost:9101/"
+clientDS = new Client urlHelper.dataSystem.url()
 
 describe "Devices", ->
 
@@ -20,7 +21,7 @@ describe "Devices", ->
         describe 'Unauthorized request', ->
 
             it "When I send a request without authentication", (done) ->
-                client.post "device/", login:"test", (err,res, body) =>
+                client.post "device", login: "test", (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -35,7 +36,7 @@ describe "Devices", ->
 
             it "When I send a request with authentication", (done) ->
                 client.setBasicAuth 'owner', 'user_pwd'
-                client.post "device", login:"test_device", (err,res, body) =>
+                client.post "device", login: "test_device", (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -51,13 +52,14 @@ describe "Devices", ->
             it "When I send a request with authentication", (done) ->
                 client.setBasicAuth 'owner', 'user_pwd'
                 device =
-                    login:"test_device_2"
+                    login: "test_device_2"
                     permissions:
                         'contact': "test"
-                client.post "device", device, (err,res, body) =>
+                client.post "device", device, (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
+                    @password = @body.password
                     @id = body.id
                     done()
 
@@ -66,7 +68,7 @@ describe "Devices", ->
                 @res.statusCode.should.equal 201
 
             it "And device has access to its permissions", (done) ->
-                clientDS.setBasicAuth 'test_device_2', @body.password
+                clientDS.setBasicAuth 'test_device_2', @password
                 data =
                     docType: 'contact'
                     slug: 'blabla'
@@ -80,7 +82,7 @@ describe "Devices", ->
                 @res.statusCode.should.equal 201
 
             it "And device hasn't access to its permissions", (done) ->
-                clientDS.setBasicAuth 'test_device_2', @body.password
+                clientDS.setBasicAuth 'test_device_2', @password
                 data =
                     docType: 'test'
                     slug: 'blabla'
@@ -98,17 +100,22 @@ describe "Devices", ->
             it "When I send a request with authentication", (done) =>
                 client.setBasicAuth 'owner', 'user_pwd'
                 device =
-                    login:"test_device_2"
+                    login: "test_device_2"
                     permissions:
                         'contact': "test"
-                client.post "device", device, (err,res, body) =>
+                client.post "device", device, (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
                     @id = body.id
-                    done()
+                    client.post "device", device, (err, res, body) =>
+                        @err = err
+                        @res = res
+                        @body = body
+                        @id = body.id
+                        done()
 
-            it "Then 201 is return as status code", =>
+            it "return an error", =>
                 should.exist @body.error
                 @body.error.should.equal 'This name is already used'
 
@@ -118,7 +125,7 @@ describe "Devices", ->
 
             it "When I send a request without authentication", (done) ->
                 client.setBasicAuth '', ''
-                client.put "device/test-device", login:'test_device', (err,res, body) =>
+                client.put "device/test-device", login: 'test_device', (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -133,7 +140,7 @@ describe "Devices", ->
 
             it "Try to modify a uncorrect device", (done) =>
                 client.setBasicAuth 'owner', 'user_pwd'
-                client.put "device/device", login:'device', (err,res, body) =>
+                client.put "device/device", login: 'device', (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -150,10 +157,10 @@ describe "Devices", ->
             it "Try to modify a correct device", (done) =>
                 client.setBasicAuth 'owner', 'user_pwd'
                 device =
-                    login:"test_device_2"
+                    login: "test_device_2"
                     permissions:
                         'event': "test"
-                client.put "device/test_device_2", device, (err,res, body) =>
+                client.put "device/#{device.login}", device, (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -170,7 +177,7 @@ describe "Devices", ->
 
             it "When I send a request without authentication", (done) ->
                 client.setBasicAuth '', ''
-                client.del "device/test-device", (err,res, body) =>
+                client.del "device/test-device", (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -183,10 +190,20 @@ describe "Devices", ->
 
         describe 'Delete a device', ->
 
-            it "Delete a device", (done) ->
+            it "can't delete a device from another device login", (done) ->
+                @timeout 10 * 1000
+                client.setBasicAuth  'test_device_2', @password
+                client.del "device/test_device", (err, res, body) =>
+                    should.exist body.error
+                    res.statusCode.should.equal 401
+                    body.error.should.equal 'Bad credentials'
+                    done()
+
+
+            it "Delete a device from owner login", (done) ->
                 @timeout 10 * 1000
                 client.setBasicAuth 'owner', 'user_pwd'
-                client.del "device/test_device", (err,res, body) =>
+                client.del "device/test_device", (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body
@@ -196,10 +213,10 @@ describe "Devices", ->
                 should.not.exist @body.error
                 @res.statusCode.should.equal 204
 
-            it "Delete another device", (done) ->
+            it "Delete a device from device login", (done) ->
                 @timeout 10 * 1000
-                client.setBasicAuth 'owner', 'user_pwd'
-                client.del "device/test_device_2", (err,res, body) =>
+                client.setBasicAuth 'test_device_2', @password
+                client.del "device/test_device_2", (err, res, body) =>
                     @err = err
                     @res = res
                     @body = body

@@ -1,4 +1,5 @@
 .node-version
+.idea
 
 node_modules
 bower_components
@@ -12,3 +13,4 @@ locales
 !build/server/locales
 
 client/public
+build
